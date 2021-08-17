@@ -1,0 +1,354 @@
+﻿@model Models.IndexModel
+@{
+    ViewData["Title"] = "Home page";
+}
+
+
+<!-- The core Firebase JS SDK is always required and must be listed first -->
+<script src="https://www.gstatic.com/firebasejs/8.4.3/firebase-app.js"></script>
+
+<!-- TODO: Add SDKs for Firebase products that you want to use
+     https://firebase.google.com/docs/web/setup#available-libraries -->
+
+<script src="https://www.gstatic.com/firebasejs/8.4.3/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.4.3/firebase-database.js"></script>
+
+
+<div class="container">
+
+    <div id="game-selection-panel">
+        <h2 class="display-4">Welcome to Truth or Lie</h2>
+
+        <button id="add-game-button" class="btn btn-primary mediumbutton">Add New Game</button>
+
+        <div id="new-game-panel" style="margin-left: 50px; display: none">
+            Enter a name for your new game:
+            <input type="text" id="new-game-title" title="name of the new game" />
+            <button id="add-game-button-confirm" class="btn btn-primary mediuminlinebutton">Add</button>
+            <p class="validationMessage" id="new-game-validation"></p>
+        </div>
+
+        <button id="join-game-button" class="btn btn-primary mediumbutton">Join Existing Game</button>
+
+        <div id="join-game-panel" style="margin-left:50px;display:none">
+            Enter the name the game you want to join:
+            <input type="text" id="existing-game-title" title="name of the new game" />
+            <button id="join-game-button-confirm" class="btn btn-primary mediuminlinebutton">Join</button>
+            <p class="validationMessage" id="join-game-validation"></p>
+        </div>
+    </div>
+
+    <div id="game-joined-panel" style="display:none">
+        <h2 id="game-title" class="display-4"></h2>
+
+        Please enter your user name:
+        <input type="text" id="user-name" title="Please enter your user name" />
+        <p class="validationMessage" id="user-name-validation"></p>
+
+
+        <div class="card-deck">
+            <div class="card mb-3">
+                <div class="card-title"><h4>Your next vote</h4></div>
+                <div class="card-body">
+                    <button id="vote-truth-button" class="btn btn-primary mediuminlinebutton" disabled="true">Truth</button>
+                    &nbsp;&nbsp;or&nbsp;&nbsp;
+                    <button id="vote-lie-button" class="btn btn-primary mediuminlinebutton" disabled="true">Lie</button>
+                    <br />
+                    <br />
+
+                    <button id="take-turn-button" class="btn btn-primary warning mediuminlinebutton" style="display:none">Take the hot seat</button>
+                    <button id="leave-turn-button" class="btn btn-primary warning mediuminlinebutton" style="display:none">Leave the hot seat</button>
+
+                    <br />
+                    <p class="validationMessage" id="voting-message"></p>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-title"><h4>Players</h4></div>
+                <div class="card-body" id="player-list">
+                    ...
+                </div>
+            </div>
+        </div>
+        <br />
+        <br />
+        <button id="leave-game-button" class="btn btn-primary mediuminbutton btn-danger">Leave</button>
+
+        <br />
+        <br />
+        <br />
+        <br />
+
+        <div id="danger-zone" class="card mb-3 danger-zone" style="display:none">
+            <div class="card-title bg-danger text-white"><h4 style="margin-bottom:10px">Danger Zone</h4></div>
+            <div class="card-body">
+                <!-- delete entire game -->
+                <button id="delete-game-button" class="btn btn-danger boxed-action float-md-right float-none ml-0 ml-md-3 mt-md-0 mt-2" role="button">Delete Game</button>
+
+                <div class="flex-auto">
+                    <strong>Delete game</strong>
+                    <p class="mb-0">
+                        Delete this game and all cloud info associated with this game.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            // Your web app's Firebase configuration
+            var firebaseConfig = {
+                apiKey: "@Model.Settings.ApiKey",
+                authDomain: "@Model.Settings.AuthDomain",
+                databaseURL: "@Model.Settings.DatabaseUrl",
+                projectId: "@Model.Settings.ProjectId",
+                storageBucket: "@Model.Settings.StorageBucket",
+                messagingSenderId: "@Model.Settings.MessagingSenderId",
+                appId: "@Model.Settings.AppId",
+            };
+
+            var games = null;
+            var joined = null;
+            var user_name = null;
+            var update_timeout = null;
+
+            function compare_score_name(a, b) {
+                if (a.score > b.score) {
+                    return -1;
+                } else if (a.score < b.score) {
+                    return 1;
+                }
+                else if (a.name.toLowerCase() < b.name.toLowerCase())
+                {
+                    return -1;
+                }
+                else if (a.name.toLowerCase() > b.name.toLowerCase()) {
+                    return 1;
+                }
+                return 0;
+            }
+
+            function handle_players_changed(players)
+            {
+                // sort by score.
+                var l = []
+                for (key in players) {
+                    var u = players[key];
+                    l.push(u);
+                }
+                l.sort(compare_score_name);
+
+                var user_name = $("#user-name").val();
+
+                $("#player-list").empty();
+                var t = $("<table class='table table-bordered table-hover table-striped'/>");
+                var b = $("<tbody/>");
+                t.append(b);
+                for (var key in l) {
+                    var u = l[key];
+
+                    var name = u.name;
+                    var s = $("<span>" + u.name + "</span>");
+                    if (joined && u.key == joined.active) {
+                        s.addClass("hot");
+                    }
+                    var scoreCell = $("<td>" + u.score + "</td>")
+                    var nameCell = $("<td/>");
+                    nameCell.append(s);
+                    var r = $("<tr/>");
+                    r.append(scoreCell);
+                    r.append(nameCell);
+
+                    if (joined != null) {
+                        if (joined.user == null) {
+                            if (u.name == user_name) {
+                                joined.user = u;
+                                handle_user_changed(u);
+                            }
+                        }
+                        if (joined.user != null && joined.user.key == u.key) {
+                            r.addClass("selected");
+                        }
+                    }
+                    b.append(r);
+                }
+
+                $("#player-list").append(t);
+            }
+
+
+            function handle_user_changed(user) {
+                if (user) {
+                    if (user.admin) {
+                        $("#danger-zone").show();
+                    } else {
+                        $("#danger-zone").hide();
+                    }
+                    if (joined && joined.active) {
+                        $("#vote-truth-button").prop('disabled', false);
+                        $("#vote-lie-button").prop('disabled', false);
+                    }
+
+                    if (joined && joined.user && joined.user.key == joined.active) {
+                        // we are in the hot seat!
+                        $("#take-turn-button").hide();
+                        $("#leave-turn-button").show();
+                    } else {
+                        $("#take-turn-button").show();
+                        $("#leave-turn-button").hide();
+                        $("#take-turn-button").prop('disabled', false);
+                    }
+
+                    if (joined.user) {
+                        if (joined.user.vote) {
+                            $("#vote-truth-button").addClass("voted");
+                            $("#vote-lie-button").removeClass("voted");
+                        } else {
+                            $("#vote-truth-button").removeClass("voted");
+                            $("#vote-lie-button").addClass("voted");
+                        }
+                    }
+                } else {
+                    if (joined && joined.active) {
+                        $("#vote-truth-button").prop('disabled', true);
+                        $("#vote-lie-button").prop('disabled', true);
+                    }
+                    $("#take-turn-button").hide();
+                    $("#leave-turn-button").hide();
+                }
+            }
+
+            function handle_joined(game) {
+                if (game == null) {
+                    // some error happened
+                    this.joined = null;
+                } else {
+                    this.joined = game
+                    game.users_changed = handle_players_changed;
+                    game.user_changed = handle_user_changed;
+                    game.active_changed = on_user_activated;
+                    $("#game-title").text(game.title);
+                    $("#game-selection-panel").hide();
+                    $("#game-joined-panel").show();
+                }
+            }
+
+            function on_user_updated(u) {
+                if (joined != null) {
+                    // rebind to show selected user
+                    handle_players_changed(joined.users);
+                }
+            }
+
+            function update_user_name() {
+                if (this.joined != null) {
+                    this.joined.rename_user(this.user_name, $("#user-name-validation"), on_user_updated);
+                }
+            }
+
+            function handle_user_name(name) {
+                this.user_name = name;
+                window.clearTimeout(update_timeout);
+                update_timeout = window.setTimeout(update_user_name, 1000);
+            }
+
+            function on_user_activated(error) {
+                if (error != null) {
+                    $("#voting-message").text(error);
+                }
+                if (joined) {
+                    handle_user_changed(joined.user);
+                    // rebind to show active user
+                    handle_players_changed(joined.users);
+                }
+            }
+
+            function leave() {
+                if (joined) {
+                    joined.leave();
+                }
+                $("#user-name").val("");
+                $("#voting-message").empty();
+                joined = null;
+                $("#game-selection-panel").show();
+                $("#game-joined-panel").hide();
+                $("#danger-zone").hide();
+            }
+
+            window.onload = function () {
+                // Initialize Firebase
+                firebase.initializeApp(firebaseConfig);
+
+                games = new GameList();
+
+                $("#add-game-button").on("click", function () {
+                    $("#new-game-panel").slideToggle(300, function () {
+                    });
+                    if ($("#join-game-panel").is(":visible")) {
+                        $("#join-game-panel").slideToggle(300);
+                    }
+                });
+
+                $("#join-game-button").on("click", function () {
+                    $("#join-game-panel").slideToggle(300, function () {
+
+                    });
+                    if ($("#new-game-panel").is(":visible")) {
+                        $("#new-game-panel").slideToggle(300);
+                    }
+                });
+
+                $("#add-game-button-confirm").on("click", function () {
+                    $("#player-list").empty();
+                    games.add($("#new-game-title"), $("#new-game-validation"), handle_joined);
+                });
+
+                $("#join-game-button-confirm").on("click", function () {
+                    $("#player-list").empty();
+                    games.join($("#existing-game-title"), $("#join-game-validation"), handle_joined);
+                });
+
+                $("#leave-game-button").on("click", leave);
+
+                $("#user-name").on("input", function (e) {
+                    handle_user_name(e.target.value);
+                });
+
+                $("#vote-truth-button").on("click", function (e) {
+                    $("#voting-message").empty();
+                    if (joined && joined.user) {
+                        joined.user.vote_truth($("#voting-message"), handle_user_changed);
+                    }
+
+                });
+                $("#vote-lie-button").on("click", function (e) {
+                    $("#voting-message").empty();
+                    if (joined && joined.user) {
+                        joined.user.vote_lie($("#voting-message"), handle_user_changed);
+                    }
+
+                });
+                $("#take-turn-button").on("click", function (e) {
+                    $("#voting-message").empty();
+                    if (joined && joined.user) {
+                        joined.activate_user(on_user_activated);
+                    }
+                });
+                $("#leave-turn-button").on("click", function (e) {
+                    $("#voting-message").empty();
+                    if (joined && joined.user) {
+                        joined.tally_scores();
+                        joined.deactivate_user(on_user_activated);
+                    }
+                });
+
+                $("#delete-game-button").on("click", function (e) {
+                    if (joined) {
+                        joined.delete();
+                        leave();
+                    }
+                })
+
+                $("#voting-message").empty();
+        };
+
+        </script>
