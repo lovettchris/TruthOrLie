@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using NUglify.JavaScript;
 using TruthOrLie.Firebase;
 
 namespace TruthOrLie
@@ -39,6 +40,19 @@ namespace TruthOrLie
             });
 
             services.AddRazorPages();
+
+            if (System.Diagnostics.Debugger.IsAttached)
+            {
+                services.AddWebOptimizer(minifyJavaScript: false, minifyCss: false);
+            }
+            else
+            {
+                services.AddWebOptimizer(pipeline =>
+                {
+                    // pipeline.MinifyJsFiles("js/*.js"); // rats, doesn't work - see https://github.com/ligershark/WebOptimizer/issues/184
+                    pipeline.MinifyCssFiles("css/*.css");
+                });
+            }
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -55,6 +69,7 @@ namespace TruthOrLie
                 app.UseHsts();
             }
 
+            app.UseWebOptimizer();
             app.UseHttpsRedirection();
             app.UseStaticFiles();
 

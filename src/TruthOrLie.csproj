@@ -5,4 +5,8 @@
     <UserSecretsId>439a74da-6d56-49dc-a886-bad41f827ac6</UserSecretsId>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="LigerShark.WebOptimizer.Core" Version="3.0.313" />
+  </ItemGroup>
+
 </Project>
