@@ -3,15 +3,20 @@
 #    az login
 #    az account set --subscription id
 #
+param(
+    [Parameter(Mandatory=$true)]
+    [string]$resource_group,
+    [Parameter(Mandatory=$true)]
+    [string]$webapp_service_plan,
+    [Parameter(Mandatory=$true)]
+    [string]$app_service_name,
+    [Parameter(Mandatory=$true)]
+    [string]$plan_location,
+    [Parameter(Mandatory=$true)]
+    [string]$web_app_sku
+)
 
-$resource_group = "userrg-clovett"
-
-# the web app
-$webapp_service_plan = "msr-truth-or-lie-plan"
-$web_app_sku = "S1"
-$app_service = "msr-truth-or-lie"
-$plan_location = "westus2"
-
+# the firebase settings
 $apikey = ""
 $authdomain = ""
 $databaseurl = ""
@@ -140,17 +145,17 @@ if ($null -eq $output)
 }
 
 # create the web app
-Write-Host "Checking web app: $app_service ..."
-$output = &az webapp show --name $app_service --resource-group $resource_group 2>&1
+Write-Host "Checking web app: $app_service_name ..."
+$output = &az webapp show --name $app_service_name --resource-group $resource_group 2>&1
 $ec = $LastExitCode
 if ($output.ToString().Contains("ResourceNotFound") -or
     $output.ToString().Contains("app doesn't exist"))
 {
-    $output = Invoke-Tool -prompt "Creating app service $app_service ..." -command "az webapp create --resource-group $resource_group --plan $webapp_service_plan --name $app_service" | ConvertFrom-Json
+    $output = Invoke-Tool -prompt "Creating app service $app_service_name ..." -command "az webapp create --resource-group $resource_group --plan $webapp_service_plan --name $app_service_name" | ConvertFrom-Json
 }
 elseif ($ec -ne 0)
 {
-    Write-Host "### Error $ec looking for appservice $app_service in resource group $resource_group" -ForegroundColor Red
+    Write-Host "### Error $ec looking for appservice $app_service_name in resource group $resource_group" -ForegroundColor Red
     write-Host $output
     Exit-PSSession
 }
@@ -163,10 +168,10 @@ Write-host "Your app service will be available at https://$hostname"
 
 # the '@' sign is special in powershell, so the only way to pass it to az webapp config is to write this
 # string to a command script and execute that!
-Set-Content -Path "settings.cmd" -Value "az webapp config appsettings set --name $app_service --resource-group $resource_group --settings @settings.json"
+Set-Content -Path "settings.cmd" -Value "az webapp config appsettings set --name $app_service_name --resource-group $resource_group --settings @settings.json"
 $output = &settings.cmd
 
 Write-Host ""
 Write-Host "====================================================================================================="
 Write-Host "Azure resource group '$resource_group' setup complete."
-Write-Host "Please use VS to publish your project to resource group $resource_group app service $app_service"
+Write-Host "Please use VS to publish your project to resource group $resource_group app service $app_service_name"
