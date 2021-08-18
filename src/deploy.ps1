@@ -53,15 +53,15 @@ function Set-JToken($jobject, $name, $value)
 
 function RegisterAppIdHelp() {
     Write-Host "Please create Firebase database and set the user-secrets using: "
-    Write-Host "  cd $location/SyntheticsDemo"
+    Write-Host "  "
     Write-Host "  dotnet user-secrets init"
-    Write-Host "  dotnet user-secrets set FirebaseApiKey `"AIzaSyDBEi2yagVKmiXNmgWinONOsnUMR2F3x2E`""
-    Write-Host "  dotnet user-secrets set AuthDomain `"myambientai.firebaseapp.com`""
+    Write-Host "  dotnet user-secrets set FirebaseApiKey `"...`""
+    Write-Host "  dotnet user-secrets set AuthDomain `"...`""
     Write-Host "  dotnet user-secrets set DatabaseURL `"...`""
     Write-Host "  dotnet user-secrets set ProjectId `"...`""
     Write-Host "  dotnet user-secrets set StorageBucket `"...`""
     Write-Host "  dotnet user-secrets set MessagingSenderId `"...`""
-    Write-Host "  dotnet user-secrets set AppId `"1:891448501220:web:9376224aeb0d42ad365df1`""
+    Write-Host "  dotnet user-secrets set AppId `"...`""
     Exit-PSSession
 }
 
