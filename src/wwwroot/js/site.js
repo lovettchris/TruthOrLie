@@ -161,6 +161,7 @@ class Game {
         var ref = firebase.database().ref().child("games/" + this.key + "/users");
         var user = new User(ref, key, x.val());
         this.users[key] = user;
+        console.log("user added: " + user.name);
         this.throttle_users_changed();
     }
 
@@ -170,9 +171,11 @@ class Game {
         if (this.user != null && this.user.key == key) {
             var data = x.val();
             this.user.pull(data);
+            this.users[key] = this.user;
         } else {
             this.users[key] = new User(ref, key, x.val());
         }
+        console.log("user changed: " + this.users[key].name);
         this.throttle_users_changed();
     }
 
@@ -188,6 +191,10 @@ class Game {
                 this.fire_active_changed();
             }
         }
+        if (key in this.users) {
+            var u = this.users[key];
+            console.log("user removed: " + u.name);
+        }
         delete this.users[key];
         this.throttle_users_changed();
     }
@@ -196,7 +203,7 @@ class Game {
         if (this.users_changed) {
             var realThis = this;
             window.clearTimeout(this.update_timeout);
-            window.setTimeout(function () {
+            this.update_timeout = window.setTimeout(function () {
                 realThis.users_changed(realThis.users);
             }, 100);
         }
