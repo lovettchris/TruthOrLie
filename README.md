@@ -4,7 +4,7 @@ Simple implementation of the Truth or Lie game with online voting and realtime s
 
 See [Demo Video](https://lovettsoftwarestorage.blob.core.windows.net/videos/TruthOrLie.mp4)
 
-![screenshot](web/screenshot.png)
+[![screenshot](web/screenshot.png)](https://lovettsoftwarestorage.blob.core.windows.net/videos/TruthOrLie.mp4)
 
 ### Installation
 
